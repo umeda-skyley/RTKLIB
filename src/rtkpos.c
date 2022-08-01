@@ -404,10 +404,13 @@ static double varerr(int sat, int sys, double el, double snr_rover, double snr_b
     int nf=NF(opt),frq,code;
 
     frq=f%nf;code=f<nf?0:1;
+
     /* increase variance for pseudoranges */
-    if (code) fact=opt->eratio[frq]; 
-    if (fact<=0.0) fact=opt->eratio[0];
-    /* adjust variances for constellation */
+    if (code) fact=opt->eratio[frq];
+    /* else adjust variance between freqs */
+    else fact=opt->eratio[frq]/opt->eratio[0];
+
+    /* adjust variance for constellation */
     switch (sys) {
         case SYS_GPS: fact*=EFACT_GPS;break;
         case SYS_GLO: fact*=EFACT_GLO;break;
@@ -487,7 +490,7 @@ static void udpos(rtk_t *rtk, double tt)
     }
     /* initialize position for first epoch */
     if (norm(rtk->x,3)<=0.0) {
-        trace(3,"rr=");tracemat(3,rtk->sol.rr,1,6,15,6);
+        trace(3,"rr_init=");tracemat(3,rtk->sol.rr,1,6,15,6);
         for (i=0;i<3;i++) initx(rtk,rtk->sol.rr[i],VAR_POS,i);
         if (rtk->opt.dynamics) {
             for (i=3;i<6;i++) initx(rtk,rtk->sol.rr[i],VAR_VEL,i);
@@ -896,7 +899,7 @@ static void udstate(rtk_t *rtk, const obsd_t *obs, const int *sat,
     
     /* temporal update of position/velocity/acceleration */
     udpos(rtk,tt);
-    
+
     /* temporal update of ionospheric parameters */
     if (rtk->opt.ionoopt>=IONOOPT_EST) {
         bl=baseline(rtk->x,rtk->rb,dr);
@@ -1184,7 +1187,7 @@ static int ddres(rtk_t *rtk, const nav_t *nav, const obsd_t *obs, double dt, con
     int ii,jj,frq,code;
     
     trace(3,"ddres   : dt=%.4f ns=%d\n",dt,ns);
-    
+
     /* bl=distance from base to rover, dr=x,y,z components */
     bl=baseline(x,rtk->rb,dr);
     /* translate ecef pos to geodetic pos */
@@ -1325,9 +1328,9 @@ static int ddres(rtk_t *rtk, const nav_t *nav, const obsd_t *obs, double dt, con
 
                 /* if residual too large, flag as outlier */
                 /* adjust threshold by error stdev ratio unless one of the phase biases was just initialized*/
-                threshadj=code||(P[ii+rtk->nx*ii]==SQR(rtk->opt.std[0]))||
-                        (P[jj+rtk->nx*jj]==SQR(rtk->opt.std[0]))?opt->eratio[frq]:1;
-                if (opt->maxinno>0.0&&fabs(v[nv])>opt->maxinno*threshadj) {
+                threshadj=(P[ii+rtk->nx*ii]==SQR(rtk->opt.std[0]))||
+                        (P[jj+rtk->nx*jj]==SQR(rtk->opt.std[0]))?10:1;
+                if (fabs(v[nv])>opt->maxinno[code]*threshadj) {
                     rtk->ssat[sat[j]-1].vsat[frq]=0;
                     rtk->ssat[sat[j]-1].rejc[frq]++;
                     errmsg(rtk,"outlier rejected (sat=%3d-%3d %s%d v=%.3f)\n",
@@ -2019,7 +2022,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
             /* update state and covariance matrix from kalman filter update */
             matcpy(rtk->x,xp,rtk->nx,1);
             matcpy(rtk->P,Pp,rtk->nx,rtk->nx);
-            
+
             /* update valid satellite status for ambiguity control */
             rtk->sol.ns=0;
             for (i=0;i<ns;i++) for (f=0;f<nf;f++) {
@@ -2123,7 +2126,7 @@ static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
     free(xp); free(Pp);  free(xa);  free(v); free(H); free(R); free(bias);
     
     if (stat!=SOLQ_NONE) rtk->sol.stat=stat;
-    
+
     return stat!=SOLQ_NONE;
 }
 /* initialize RTK control ------------------------------------------------------

@@ -59,7 +59,7 @@ extern "C" {
 
 #define VER_RTKLIB  "demo5"             /* library version */
 
-#define PATCH_LEVEL "b34f.1"               /* patch level */
+#define PATCH_LEVEL "gdsc_2022"               /* patch level */
 
 #define COPYRIGHT_RTKLIB \
             "Copyright (C) 2007-2020 T.Takasu\nAll rights reserved."
@@ -100,7 +100,7 @@ extern "C" {
 #define FREQ3_CMP   1.26852E9           /* BDS B3      frequency (Hz) */
 
 #define EFACT_GPS   1.0                 /* error factor: GPS */
-#define EFACT_GLO   1.5                 /* error factor: GLONASS */
+#define EFACT_GLO   0.75                /* error factor: GLONASS */
 #define EFACT_GAL   1.0                 /* error factor: Galileo */
 #define EFACT_QZS   1.0                 /* error factor: QZSS */
 #define EFACT_CMP   1.0                 /* error factor: BeiDou */
@@ -1022,8 +1022,7 @@ typedef struct {        /* processing options type */
     double varholdamb;  /* variance for fix-and-hold psuedo measurements (cycle^2) */
     double gainholdamb; /* gain used for GLO and SBAS sats to adjust ambiguity */
     double maxtdiff;    /* max difference of time (sec) */
-    double maxinno;     /* reject threshold of innovation (m) */
-    double maxgdop;     /* reject threshold of gdop */
+    double maxinno[2];  /* reject threshold of innovation for code and phase (m) */
     double baseline[2]; /* baseline length constraint {const,sigma} (m) */
     double ru[3];       /* rover position for fixed mode {x,y,z} (ecef) (m) */
     double rb[3];       /* base position for relative mode {x,y,z} (ecef) (m) */
